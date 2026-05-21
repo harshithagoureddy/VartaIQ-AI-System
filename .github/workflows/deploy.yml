@@ -114,12 +114,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
       
-      # Step 2: Set up Docker Buildx
+      # Step 2: Convert repository name to lowercase
+      # GitHub Container Registry requires lowercase names
+      - name: Set lowercase image name
+        id: image
+        run: |
+          echo "name=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
+      # Step 3: Set up Docker Buildx
       # Buildx is an advanced Docker build tool with better caching
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
-      # Step 3: Log in to GitHub Container Registry
+      # Step 4: Log in to GitHub Container Registry
       # Uses GitHub's built-in GITHUB_TOKEN (no manual token needed!)
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -128,18 +135,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      # Step 4: Extract metadata for Docker image
+      # Step 5: Extract metadata for Docker image
       # This generates tags and labels for the Docker image
       - name: Extract Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
           tags: |
             type=sha,prefix={{branch}}-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
       
-      # Step 5: Build and push Docker image to GitHub Container Registry
+      # Step 6: Build and push Docker image to GitHub Container Registry
       # This builds the image and pushes it to ghcr.io
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -149,18 +156,21 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache,mode=max
       
-      # Step 6: Deploy to Production Server
+      # Step 7: Deploy to Production Server
       # This connects to the production server via SSH and deploys the new image
       - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          envs: IMAGE_NAME
           script: |
             # Navigate to application directory
             cd ~/vartaiq-app || exit 1
@@ -170,7 +180,7 @@ jobs:
             echo "${{ secrets.DOCKER_TOKEN }}" | docker login ghcr.io -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
             
             # Pull the latest Docker image from GitHub Container Registry
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker pull ghcr.io/${IMAGE_NAME}:latest
             
             # Stop the old container (if running)
             docker stop vartaiq-ai-analyzer 2>/dev/null || true
@@ -187,7 +197,7 @@ jobs:
               --restart unless-stopped \
               -p 8000:8000 \
               --env-file .env \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+              ghcr.io/${IMAGE_NAME}:latest
             
             # Wait for container to start
             sleep 10
@@ -212,7 +222,7 @@ jobs:
             # Clean up old Docker images to save disk space
             docker image prune -af --filter "until=24h"
       
-      # Step 7: Notify on Success
+      # Step 8: Notify on Success
       - name: Deployment Success
         if: success()
         run: |
@@ -220,13 +230,13 @@ jobs:
           echo "Application is now running at http://${{ secrets.SERVER_HOST }}:8000"
           echo "Health check: http://${{ secrets.SERVER_HOST }}:8000/health"
           echo "API Docs: http://${{ secrets.SERVER_HOST }}:8000/docs"
-          echo "Docker image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Docker image: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest"
       
-      # Step 8: Notify on Failure
+      # Step 9: Notify on Failure
       - name: Deployment Failed
         if: failure()
         run: |
           echo "❌ Deployment failed. Check the logs above for details."
           echo "To rollback, SSH into the server and run:"
           echo "docker stop vartaiq-ai-analyzer && docker rm vartaiq-ai-analyzer"
-          echo "docker run -d --name vartaiq-ai-analyzer --restart unless-stopped -p 8000:8000 --env-file .env ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:<previous-tag>"
+          echo "docker run -d --name vartaiq-ai-analyzer --restart unless-stopped -p 8000:8000 --env-file .env ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:<previous-tag>"

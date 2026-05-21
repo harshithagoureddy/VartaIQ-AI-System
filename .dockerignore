@@ -1,9 +1,71 @@
+# =====================================
+# .dockerignore
+# =====================================
+# Files and directories to exclude from Docker build context
+# This makes the build faster and the image smaller
+
+# Python virtual environment
 venv/
+env/
+ENV/
+
+# Python cache files
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
+
+# Git files
 .git/
 .gitignore
+.gitattributes
+
+# Documentation (not needed in production)
 *.md
+README.md
+VartaIQ_AI_Module_Documentation.md
+
+# Development scripts
 start.bat
+connect-ec2.bat
+run.py
+
+# Environment files (secrets should be passed at runtime, not baked into image)
 .env
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs (will be generated at runtime)
+logs/
+*.log
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# CI/CD files (not needed in the image)
+.github/
+.gitlab-ci.yml
+
+# Docker files (not needed inside the image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/

@@ -1,0 +1,75 @@
+# =====================================
+# Docker Compose Configuration
+# =====================================
+# This file defines how to run the VartaIQ application locally with Docker
+# 
+# Usage:
+#   docker-compose up --build    → Build and start the application
+#   docker-compose down          → Stop and remove containers
+#   docker-compose logs -f       → View logs in real-time
+
+
+
+services:
+  # =====================================
+  # VartaIQ FastAPI Application
+  # =====================================
+  vartaiq-app:
+    # Build the Docker image from the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Container name (easier to reference than auto-generated names)
+    container_name: vartaiq-ai-analyzer
+    
+    # Port mapping: host_port:container_port
+    # Access the app at http://localhost:8000
+    ports:
+      - "8000:8000"
+    
+    # Environment variables
+    # These are loaded from the .env file in the same directory
+    # IMPORTANT: Never commit .env file to Git (it contains secrets)
+    env_file:
+      - .env
+    
+    # Alternative: You can also specify environment variables directly
+    # (but using .env file is cleaner and more secure)
+    # environment:
+    #   - DATABASE_URL=${DATABASE_URL}
+    #   - HF_API_TOKEN=${HF_API_TOKEN}
+    
+    # Restart policy
+    # "unless-stopped" means the container will restart automatically
+    # unless you explicitly stop it with docker-compose down
+    restart: unless-stopped
+    
+    # Health check
+    # Docker will check if the app is healthy by calling the /health endpoint
+    # If the health check fails 3 times, the container is marked as unhealthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s      # Check every 30 seconds
+      timeout: 10s       # Wait up to 10 seconds for response
+      retries: 3         # Retry 3 times before marking as unhealthy
+      start_period: 40s  # Wait 40 seconds before starting health checks (app startup time)
+    
+    # Resource limits (optional but recommended for production)
+    # Prevents the container from consuming all system resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 2G
+
+# =====================================
+# Networks (optional)
+# =====================================
+# If you want to add a PostgreSQL container later, you can define a network here
+# networks:
+#   vartaiq-network:
+#     driver: bridge

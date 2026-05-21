@@ -30,7 +30,7 @@ on:
 # =====================================
 # These are available to all jobs in the workflow
 env:
-  DOCKER_IMAGE_NAME: vartaiq-ai-analyzer
+  DOCKER_IMAGE_NAME: vartaiq
   PYTHON_VERSION: '3.11'
 
 # =====================================
@@ -154,7 +154,7 @@ jobs:
           port: 22
           script: |
             # Navigate to application directory
-            cd /home/${{ secrets.SERVER_USER }}/vartaiq-app || exit 1
+            cd ~/vartaiq-app || exit 1
             
             # Log in to Docker Hub (using environment variables passed securely)
             echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin

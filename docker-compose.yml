@@ -1,147 +1,76 @@
-name: VartaIQ CI Pipeline
 
-on:
-  push:
-    # Triggers on your current branch. Replace with your actual branch name if different.
-    branches: [ main, feature-updated-branch ] 
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-
-    steps:
-    # 1. Check out the repository code
-    - name: Checkout repository code
-      uses: actions/checkout@v4
-
-    # 2. Set up Python (Useful for linting FastAPI code if needed)
-    - name: Set up Python
-      uses: actions/checkout@v4
-      # Note: You can add flake8/pytest steps here later if you have unit tests
-
-    # 3. Create a dummy .env file
-    # Your docker-compose expects a .env file. We mock it here so the build doesn't crash.
-    - name: Create mock .env file
-      run: |
-        echo "DATABASE_URL=mock_value" >> .env
-        echo "HF_API_TOKEN=mock_value" >> .env
-
-    # 4. Build the Docker Image using Docker Compose
-    - name: Build Docker Image
-      run: docker compose build
-
-    # 5. Start the application container in the background
-    - name: Start Container
-      run: docker compose up -d
-
-    # 6. Wait and verify the application Health Check
-    # This loops and tests the health endpoint exactly like your compose file does
-    - name: Verify App Health Check
-      run: |
-        echo "Waiting for application to start..."
-        sleep 15
-        for i in {1..6}; do
-          if curl -f http://localhost:8000/health; then
-            echo "Success: VartaIQ application is healthy!"
-            exit 0
-          fi
-          echo "App not ready yet, retrying in 5 seconds ($i/6)..."
-          sleep 5
-        done
-        echo "Error: Application failed health check."
-        docker compose logs
-        exit 1
-
-    # 7. Shut down the containers safely
-    - name: Stop Containers
-      if: always()
-      run: docker compose down
+# =====================================
+# Docker Compose Configuration
+# =====================================
+# This file defines how to run the VartaIQ application locally with Docker
+# 
+# Usage:
+#   docker-compose up --build    → Build and start the application
+#   docker-compose down          → Stop and remove containers
+#   docker-compose logs -f       → View logs in real-time
 
 
 
-
-
-
-
-
-
-
-
-
-# # =====================================
-# # Docker Compose Configuration
-# # =====================================
-# # This file defines how to run the VartaIQ application locally with Docker
-# # 
-# # Usage:
-# #   docker-compose up --build    → Build and start the application
-# #   docker-compose down          → Stop and remove containers
-# #   docker-compose logs -f       → View logs in real-time
-
-
-
-# services:
-#   # =====================================
-#   # VartaIQ FastAPI Application
-#   # =====================================
-#   vartaiq-app:
-#     # Build the Docker image from the Dockerfile in the current directory
-#     build:
-#       context: .
-#       dockerfile: Dockerfile
+services:
+  # =====================================
+  # VartaIQ FastAPI Application
+  # =====================================
+  vartaiq-app:
+    # Build the Docker image from the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile
     
-#     # Container name (easier to reference than auto-generated names)
-#     container_name: vartaiq-ai-analyzer
+    # Container name (easier to reference than auto-generated names)
+    container_name: vartaiq-ai-analyzer
     
-#     # Port mapping: host_port:container_port
-#     # Access the app at http://localhost:8000
-#     ports:
-#       - "8000:8000"
+    # Port mapping: host_port:container_port
+    # Access the app at http://localhost:8000
+    ports:
+      - "8000:8000"
     
-#     # Environment variables
-#     # These are loaded from the .env file in the same directory
-#     # IMPORTANT: Never commit .env file to Git (it contains secrets)
-#     env_file:
-#       - .env
+    # Environment variables
+    # These are loaded from the .env file in the same directory
+    # IMPORTANT: Never commit .env file to Git (it contains secrets)
+    env_file:
+      - .env
     
-#     # Alternative: You can also specify environment variables directly
-#     # (but using .env file is cleaner and more secure)
-#     # environment:
-#     #   - DATABASE_URL=${DATABASE_URL}
-#     #   - HF_API_TOKEN=${HF_API_TOKEN}
+    # Alternative: You can also specify environment variables directly
+    # (but using .env file is cleaner and more secure)
+    # environment:
+    #   - DATABASE_URL=${DATABASE_URL}
+    #   - HF_API_TOKEN=${HF_API_TOKEN}
     
-#     # Restart policy
-#     # "unless-stopped" means the container will restart automatically
-#     # unless you explicitly stop it with docker-compose down
-#     restart: unless-stopped
+    # Restart policy
+    # "unless-stopped" means the container will restart automatically
+    # unless you explicitly stop it with docker-compose down
+    restart: unless-stopped
     
-#     # Health check
-#     # Docker will check if the app is healthy by calling the /health endpoint
-#     # If the health check fails 3 times, the container is marked as unhealthy
-#     healthcheck:
-#       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-#       interval: 30s      # Check every 30 seconds
-#       timeout: 10s       # Wait up to 10 seconds for response
-#       retries: 3         # Retry 3 times before marking as unhealthy
-#       start_period: 40s  # Wait 40 seconds before starting health checks (app startup time)
+    # Health check
+    # Docker will check if the app is healthy by calling the /health endpoint
+    # If the health check fails 3 times, the container is marked as unhealthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s      # Check every 30 seconds
+      timeout: 10s       # Wait up to 10 seconds for response
+      retries: 3         # Retry 3 times before marking as unhealthy
+      start_period: 40s  # Wait 40 seconds before starting health checks (app startup time)
     
-#     # Resource limits (optional but recommended for production)
-#     # Prevents the container from consuming all system resources
-#     # deploy:
-#     #   resources:
-#     #     limits:
-#     #       cpus: '2'
-#     #       memory: 4G
-#     #     reservations:
-#     #       cpus: '1'
-#     #       memory: 2G
+    # Resource limits (optional but recommended for production)
+    # Prevents the container from consuming all system resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 2G
 
-# # =====================================
-# # Networks (optional)
-# # =====================================
-# # If you want to add a PostgreSQL container later, you can define a network here
-# # networks:
-# #   vartaiq-network:
-# #     driver: bridge
+# =====================================
+# Networks (optional)
+# =====================================
+# If you want to add a PostgreSQL container later, you can define a network here
+# networks:
+#   vartaiq-network:
+#     driver: bridge

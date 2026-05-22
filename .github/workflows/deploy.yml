@@ -200,17 +200,30 @@ jobs:
               ghcr.io/${IMAGE_NAME}:latest
             
             # Wait for container to start
-            sleep 10
-            
+            echo "Waiting 90 seconds for app to start (model download on cold start)..."
+            sleep 90
+
             # Check if container is running
             if [ "$(docker ps -q -f name=vartaiq-ai-analyzer)" ]; then
               echo "✅ Container started successfully"
-              
-              # Test the health endpoint
-              if curl -f http://localhost:8000/health; then
-                echo "✅ Health check passed"
-              else
-                echo "❌ Health check failed"
+
+              # Retry health check up to 6 times with 15 second gaps
+              HEALTH_PASSED=false
+              for i in 1 2 3 4 5 6; do
+                echo "Health check attempt $i of 6..."
+                if curl -sf http://localhost:8000/health; then
+                  echo "✅ Health check passed!"
+                  HEALTH_PASSED=true
+                  break
+                fi
+                echo "Not ready yet, waiting 15 more seconds..."
+                sleep 15
+              done
+
+              if [ "$HEALTH_PASSED" = false ]; then
+                echo "❌ Health check failed after all attempts"
+                echo "Container logs:"
+                docker logs vartaiq-ai-analyzer --tail 50
                 exit 1
               fi
             else

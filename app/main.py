@@ -4,6 +4,7 @@ load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import router
 from app.db.database import engine
@@ -27,6 +28,24 @@ app = FastAPI(
     title="VartaIQ — AI Meeting Analyzer",
     description="Analyzes meeting transcripts and generates AI-powered insights.",
     version="1.0.0"
+)
+
+# =====================================
+# CORS MIDDLEWARE
+# =====================================
+# Allow cross-origin requests from specified origins
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://65.2.158.83:3001",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "https://sabha-mind.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # =====================================

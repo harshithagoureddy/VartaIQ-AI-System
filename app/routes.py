@@ -204,7 +204,6 @@ def get_meeting(
 
 @router.get(
     "/meetings",
-    response_model=dict,
     tags=["Meetings"],
     summary="Get all meetings with pagination"
 )
@@ -238,6 +237,30 @@ def get_all_meetings(
         f"(page {page}/{total_pages}, total: {total})"
     )
 
+    # Convert SQLAlchemy models to dictionaries for JSON serialization
+    meetings_data = [
+        {
+            "id": meeting.id,
+            "meeting_title": meeting.meeting_title,
+            "participant_count": meeting.participant_count,
+            "transcript_length": meeting.transcript_length,
+            "summary": meeting.summary,
+            "topics": meeting.topics,
+            "transcript": meeting.transcript,
+            "action_items": meeting.action_items,
+            "decisions": meeting.decisions,
+            "useless_talk": meeting.useless_talk,
+            "speaker_analysis": meeting.speaker_analysis,
+            "sentiment_analysis": meeting.sentiment_analysis,
+            "score": meeting.score,
+            "ai_insights": meeting.ai_insights,
+            "followups": meeting.followups,
+            "created_at": meeting.created_at.isoformat(),
+            "updated_at": meeting.updated_at.isoformat()
+        }
+        for meeting in meetings
+    ]
+
     return {
         "pagination": {
             "total": total,
@@ -247,5 +270,5 @@ def get_all_meetings(
             "has_next": page < total_pages,
             "has_previous": page > 1
         },
-        "meetings": meetings
+        "meetings": meetings_data
     }
